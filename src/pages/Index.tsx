@@ -2,18 +2,42 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { OrientationViewer } from '@/components/OrientationViewer';
 import { SensorChart } from '@/components/SensorChart';
+import { SettingsDialog } from '@/components/SettingsDialog';
 import { useIMUData } from '@/hooks/useIMUData';
 import { toast } from 'sonner';
 
 const Index = () => {
   const [isConnected, setIsConnected] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const { accelerometer, gyroscope, magnetometer, rotation } = useIMUData();
+  const [isPaused, setIsPaused] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState({
+    samplingRate: 100,
+    chartDuration: 5,
+    devicePort: '/dev/ttyUSB0',
+    baudRate: 115200
+  });
+  
+  const { accelerometer, gyroscope, magnetometer, rotation, clearData } = useIMUData({ isPaused });
 
   const handleRecord = () => {
     setIsRecording(!isRecording);
     toast(isRecording ? 'Recording stopped' : 'Recording started', {
       description: isRecording ? 'Data saved to memory' : 'Capturing IMU data...'
+    });
+  };
+  
+  const handlePause = () => {
+    setIsPaused(!isPaused);
+    toast(isPaused ? 'Data stream resumed' : 'Data stream paused', {
+      description: isPaused ? 'Real-time updates active' : 'Updates suspended'
+    });
+  };
+  
+  const handleClear = () => {
+    clearData();
+    toast('Data cleared', {
+      description: 'All chart data has been reset'
     });
   };
 
@@ -22,14 +46,29 @@ const Index = () => {
       description: 'Preparing CSV file for download...'
     });
   };
+  
+  const handleSettings = () => {
+    setSettingsOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header 
         isConnected={isConnected}
         isRecording={isRecording}
+        isPaused={isPaused}
         onRecord={handleRecord}
         onExport={handleExport}
+        onPause={handlePause}
+        onClear={handleClear}
+        onSettings={handleSettings}
+      />
+      
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onSettingsChange={setSettings}
       />
       
       <main className="flex-1 p-6 overflow-auto">

@@ -7,6 +7,11 @@ interface IMUData {
   z: number;
 }
 
+interface UseIMUDataProps {
+  isPaused: boolean;
+  onClear?: () => void;
+}
+
 const MAX_DATA_POINTS = 50;
 
 const generateSmoothValue = (prev: number, range: number, smoothness: number = 0.1) => {
@@ -14,7 +19,7 @@ const generateSmoothValue = (prev: number, range: number, smoothness: number = 0
   return prev + (target - prev) * smoothness;
 };
 
-export const useIMUData = () => {
+export const useIMUData = ({ isPaused }: UseIMUDataProps) => {
   const [accelerometer, setAccelerometer] = useState<IMUData[]>([]);
   const [gyroscope, setGyroscope] = useState<IMUData[]>([]);
   const [magnetometer, setMagnetometer] = useState<IMUData[]>([]);
@@ -27,6 +32,8 @@ export const useIMUData = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (isPaused) return;
+      
       timeRef.current += 0.1;
       
       // Generate smooth accelerometer data (includes gravity)
@@ -78,12 +85,20 @@ export const useIMUData = () => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isPaused]);
+  
+  const clearData = () => {
+    setAccelerometer([]);
+    setGyroscope([]);
+    setMagnetometer([]);
+    timeRef.current = 0;
+  };
 
   return {
     accelerometer,
     gyroscope,
     magnetometer,
-    rotation
+    rotation,
+    clearData
   };
 };
