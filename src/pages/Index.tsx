@@ -3,14 +3,17 @@ import { Header } from '@/components/Header';
 import { OrientationViewer } from '@/components/OrientationViewer';
 import { SensorChart } from '@/components/SensorChart';
 import { SettingsDialog } from '@/components/SettingsDialog';
+import { BLEConnectionDialog } from '@/components/BLEConnectionDialog';
 import { useIMUData } from '@/hooks/useIMUData';
 import { toast } from 'sonner';
 
 const Index = () => {
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bleDialogOpen, setBleDialogOpen] = useState(false);
+  const [selectedIMU, setSelectedIMU] = useState('imu1');
   const [settings, setSettings] = useState({
     samplingRate: 100,
     chartDuration: 5,
@@ -50,18 +53,46 @@ const Index = () => {
   const handleSettings = () => {
     setSettingsOpen(true);
   };
+  
+  const handleConnectionClick = () => {
+    if (isConnected) {
+      setIsConnected(false);
+      toast('Disconnected', {
+        description: 'IMU device disconnected'
+      });
+    } else {
+      setBleDialogOpen(true);
+    }
+  };
+  
+  const handleBLEConnect = (deviceName: string) => {
+    setIsConnected(true);
+    toast('Connected', {
+      description: `Connected to ${deviceName}`
+    });
+  };
+  
+  const handleIMUChange = (imu: string) => {
+    setSelectedIMU(imu);
+    toast('IMU Changed', {
+      description: `Switched to ${imu.toUpperCase()}`
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       <Header 
         isConnected={isConnected}
         isRecording={isRecording}
         isPaused={isPaused}
+        selectedIMU={selectedIMU}
+        onIMUChange={handleIMUChange}
         onRecord={handleRecord}
         onExport={handleExport}
         onPause={handlePause}
         onClear={handleClear}
         onSettings={handleSettings}
+        onConnectionClick={handleConnectionClick}
       />
       
       <SettingsDialog
@@ -71,15 +102,21 @@ const Index = () => {
         onSettingsChange={setSettings}
       />
       
-      <main className="flex-1 p-6 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full max-h-[calc(100vh-120px)]">
+      <BLEConnectionDialog
+        open={bleDialogOpen}
+        onOpenChange={setBleDialogOpen}
+        onConnect={handleBLEConnect}
+      />
+      
+      <main className="flex-1 p-6 overflow-hidden min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
           {/* 3D Orientation Viewer */}
-          <div className="lg:col-span-1 h-[500px] lg:h-full min-h-[400px]">
+          <div className="lg:col-span-1 min-h-0">
             <OrientationViewer rotation={rotation} />
           </div>
           
           {/* Sensor Charts Grid */}
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 grid-rows-3 min-h-0 overflow-auto">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr min-h-0 overflow-auto">
             <div className="min-h-[250px]">
               <SensorChart
                 title="Accelerometer"
