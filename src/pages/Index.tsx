@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { OrientationViewer } from '@/components/OrientationViewer';
 import { SensorChart } from '@/components/SensorChart';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { BLEConnectionDialog } from '@/components/BLEConnectionDialog';
+import { DataPacketStatus } from '@/components/DataPacketStatus';
 import { useIMUData } from '@/hooks/useIMUData';
 import { toast } from 'sonner';
 
@@ -20,8 +21,25 @@ const Index = () => {
     devicePort: '/dev/ttyUSB0',
     baudRate: 115200
   });
+  const [packetsReceived, setPacketsReceived] = useState(0);
+  const [dataRate, setDataRate] = useState(0);
+  const [lastPacketTime, setLastPacketTime] = useState('--:--:--');
   
   const { accelerometer, gyroscope, magnetometer, rotation, clearData } = useIMUData({ isPaused });
+
+  // Simulate packet reception tracking
+  useEffect(() => {
+    if (!isPaused && isConnected) {
+      const interval = setInterval(() => {
+        setPacketsReceived(prev => prev + 1);
+        setDataRate(settings.samplingRate);
+        const now = new Date();
+        setLastPacketTime(now.toLocaleTimeString());
+      }, 1000 / settings.samplingRate);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isPaused, isConnected, settings.samplingRate]);
 
   const handleRecord = () => {
     setIsRecording(!isRecording);
@@ -39,6 +57,9 @@ const Index = () => {
   
   const handleClear = () => {
     clearData();
+    setPacketsReceived(0);
+    setDataRate(0);
+    setLastPacketTime('--:--:--');
     toast('Data cleared', {
       description: 'All chart data has been reset'
     });
@@ -107,6 +128,28 @@ const Index = () => {
         onOpenChange={setBleDialogOpen}
         onConnect={handleBLEConnect}
       />
+      
+      {isConnected && (
+        <div className="px-6 pt-4">
+          <DataPacketStatus
+            packetsReceived={packetsReceived}
+            dataRate={dataRate}
+            lastPacketTime={lastPacketTime}
+            latestData={{
+              accel: {
+                x: accelerometer[accelerometer.length - 1]?.x || 0,
+                y: accelerometer[accelerometer.length - 1]?.y || 0,
+                z: accelerometer[accelerometer.length - 1]?.z || 0
+              },
+              gyro: {
+                x: gyroscope[gyroscope.length - 1]?.x || 0,
+                y: gyroscope[gyroscope.length - 1]?.y || 0,
+                z: gyroscope[gyroscope.length - 1]?.z || 0
+              }
+            }}
+          />
+        </div>
+      )}
       
       <main className="flex-1 p-6 overflow-hidden min-h-0">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
